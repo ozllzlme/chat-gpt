@@ -5,20 +5,24 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import com.example.chatgpt.dto.ChatGptRequest;
 import com.example.chatgpt.dto.ChatGptResponse;
 import com.example.chatgpt.dto.Message;
 
+import reactor.core.publisher.Mono;
+
 @RestController
 public class chatGptController {
 
 	@Autowired
-	private RestTemplate template;
+	private WebClient webClient;
 
 
 	@Value("${gpt.model}")
@@ -28,7 +32,7 @@ public class chatGptController {
 	private String url;
 
 	@GetMapping("/gpt/{prompt}")
-	public ChatGptResponse getChatGptResponse(@PathVariable("prompt") String prompt){
+	public Mono<ChatGptResponse> getChatGptResponse(@PathVariable("prompt") String prompt){
 		ChatGptRequest request = new ChatGptRequest();
 		List<Message> messageList = new ArrayList<>();
 		Message chatGptMessage = new Message();
@@ -38,7 +42,11 @@ public class chatGptController {
 		request.setModel(model);
 		request.setMessages(messageList);
 
-		ChatGptResponse chatGptResponse = template.postForObject(url,request,ChatGptResponse.class);
-		return chatGptResponse;
+		return webClient.post()
+			.uri(url)
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request)
+			.retrieve()
+			.bodyToMono(ChatGptResponse.class);
 	}
 }
